@@ -41,27 +41,47 @@ public class Main {
         }
     }
     public static void main(String[] args) throws NoSuchMethodException, InterruptedException {
-        Class s = Set.class;
-        Method[] ms = s.getMethods();
-        Method insert = Set.class.getMethod("insert", Object.class);
-        Method find = Set.class.getMethod("find", Object.class);
-
-        Set bst = new NonBlockingBinarySearchTree<Integer>();
-        Operation ops1[] = new Operation[]{
-            new Operation(bst, insert, 1),
-            new Operation(bst, insert, 2)
+//        Class s = Set.class;
+//        Method[] ms = s.getMethods();
+//        Method insert = Set.class.getMethod("insert", Object.class);
+//        Method find = Set.class.getMethod("find", Object.class);
+//
+        final Set bst = new NonBlockingBinarySearchTree<Integer>();
+//        Operation ops1[] = new Operation[]{
+//            new Operation(bst, insert, 1),
+//            new Operation(bst, insert, 2)
+//        };
+//        Operation ops2[] = new Operation[]{
+//            new Operation(bst, insert, 3),
+//            new Operation(bst, insert, 4)
+//        };
+//
+//        Thread t1 = new Thread(new MyThread(ops1));
+//        Thread t2 = new Thread(new MyThread(ops2));
+        Thread t1 = new Thread(){
+            public void run(){
+                bst.insert(1);
+                bst.insert(2);
+            }
         };
-        Operation ops2[] = new Operation[]{
-            new Operation(bst, insert, 3),
-            new Operation(bst, insert, 4)
+        Thread t2 = new Thread(){
+            public void run(){
+                bst.insert(3);
+                bst.insert(4);
+            }
         };
-
-        Thread t1 = new Thread(new MyThread(ops1));
-        Thread t2 = new Thread(new MyThread(ops2));
+        Thread t3 = new Thread(){
+            public void run(){
+                bst.delete(1);
+                bst.delete(4);
+            }
+        };
         t1.start();
         t2.start();
+        t3.start();
         t1.join();
         t2.join();
+        t3.join();
         System.out.println(bst);
     }
 }
