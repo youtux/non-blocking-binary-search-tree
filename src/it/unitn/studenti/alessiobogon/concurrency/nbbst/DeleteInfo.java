@@ -1,20 +1,18 @@
 package it.unitn.studenti.alessiobogon.concurrency.nbbst;
 
-import java.util.concurrent.atomic.AtomicReference;
-
 /**
  * Created by Alessio Bogon on 11/06/15.
  */
 class DeleteInfo extends Info{
-    final InternalNode p;
-    final Leaf l;
-    final InternalNode gp;
-    final AtomicReference<Update> pupdate;
+    final InternalNode parent;
+    final Leaf leaf;
+    final InternalNode grandParent;
+    final Update parentUpdate;
 
-    DeleteInfo(InternalNode gp, InternalNode p, Leaf l, Update pupdate) {
-        this.p = p;
-        this.l = l;
-        this.gp = gp;
-        this.pupdate = new AtomicReference<Update>(pupdate);
+    DeleteInfo(InternalNode grandParent, InternalNode parent, Leaf leaf, Update parentUpdate) {
+        this.parent = parent;
+        this.leaf = leaf;
+        this.grandParent = grandParent;
+        this.parentUpdate = parentUpdate;
     }
 }

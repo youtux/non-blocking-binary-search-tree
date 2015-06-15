@@ -1,11 +1,7 @@
 package it.unitn.studenti.alessiobogon.concurrency.nbbst;
 
-import com.sun.tools.corba.se.idl.constExpr.Not;
 import it.unitn.studenti.alessiobogon.concurrency.Set;
-import sun.reflect.generics.reflectiveObjects.NotImplementedException;
-
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.concurrent.atomic.AtomicStampedReference;
 
 /**
  * Created by Alessio Bogon on 11/06/15.
@@ -29,60 +25,59 @@ public class NonBlockingBinarySearchTree<T> implements Set<T> {
         int key = item.hashCode();
 
         SearchResult result = search(key);
-        return result.l.key == key;
+        return result.leaf.key == key;
     }
 
     @Override
     public boolean insert(T item){
         int key = item.hashCode();
 
-        InternalNode p, newInternal;
-        Leaf l, newSibling, new_ = new Leaf(item);
-        Update pupdate, result;
-        InsertInfo op;
+        Leaf newLeaf = new Leaf(item);
 
         while (true){
-            SearchResult sresult = search(key);
-            p = sresult.p;
-            l = sresult.l;
-            pupdate = sresult.pupdate;
+            SearchResult searchResult = search(key);
+            InternalNode parent = searchResult.parent;
+            Leaf leaf = searchResult.leaf;
+            Update parentUpdate = searchResult.parentUpdate;
 
-            if (l.key == key){
+            if (leaf.key == key){
                 // Cannot insert duplicate key
                 return false;
             }
-            if (pupdate.state != State.CLEAN){
+            if (parentUpdate.state != State.CLEAN){
                 // Help the other operation
-                help(pupdate);
-            }else{
-                newSibling = new Leaf(l.item);
-                Leaf left, right;
-
-                if (new_.key < newSibling.key){
-                    left = new_;
-                    right = newSibling;
-                }else{
-                    left = newSibling;
-                    right = new_;
-                }
-                newInternal = new InternalNode(
-                    Math.max(key, l.key),
-                    left, right,
-                    new Update(State.CLEAN, null)
-                );
-                op = new InsertInfo(p, l, newInternal);
-
-                boolean CASSuccess = p.update.compareAndSet(pupdate, new Update(State.IFLAG, op));
-                if (CASSuccess){
-                    helpInsert(op);
-                    return true;
-                }else{
-                    // TODO: the iflag CAS failed. Help the operation that cause failure
-                    // TODO: check my correctness
-                    System.out.print("Insert CAS failed");
-                    help(p.update.get());
-                }
+                help(parentUpdate);
+                continue;
             }
+
+            Leaf newSibling = new Leaf(leaf.item);
+            Leaf left, right;
+
+            if (newLeaf.key < newSibling.key){
+                left = newLeaf;
+                right = newSibling;
+            }else{
+                left = newSibling;
+                right = newLeaf;
+            }
+            InternalNode newInternal = new InternalNode(
+                Math.max(key, leaf.key),
+                left, right,
+                new Update(State.CLEAN, null)
+            );
+            InsertInfo operation = new InsertInfo(parent, leaf, newInternal);
+
+            boolean CASSuccess = parent.update.compareAndSet(parentUpdate, new Update(State.IFLAG, operation));
+            if (CASSuccess){
+                helpInsert(operation);
+                return true;
+            }else{
+                // TODO: the iflag CAS failed. Help the operation that cause failure
+                // TODO: check my correctness
+                System.out.print("Insert CAS failed");
+                help(parent.update.get());
+            }
+
 
         }
     }
@@ -92,18 +87,13 @@ public class NonBlockingBinarySearchTree<T> implements Set<T> {
     public boolean delete(T item) {
         int key = item.hashCode();
 
-        InternalNode grandParent, parent;
-        Leaf leaf;
-        Update parentUpdate, grandParentUpdate;
-        DeleteInfo op;
-
         while (true) {
-            SearchResult sresult = search(key);
-            grandParent = sresult.gp;
-            parent = sresult.p;
-            leaf = sresult.l;
-            parentUpdate = sresult.pupdate;
-            grandParentUpdate = sresult.gpupdate;
+            SearchResult searchResult = search(key);
+            InternalNode grandParent = searchResult.grandParent;
+            InternalNode parent = searchResult.parent;
+            Leaf leaf = searchResult.leaf;
+            Update parentUpdate = searchResult.parentUpdate;
+            Update grandParentUpdate = searchResult.grandParentUpdate;
 
             if (leaf.key != key)
                 return false;
@@ -117,11 +107,15 @@ public class NonBlockingBinarySearchTree<T> implements Set<T> {
                 continue;
             }
 
-            op = new DeleteInfo(grandParent, parent, leaf, parentUpdate);
-            boolean CASSuccess = grandParent.update.compareAndSet(grandParentUpdate, new Update(State.DFLAG, op));
+            DeleteInfo operation = new DeleteInfo(grandParent, parent, leaf, parentUpdate);
+
+            boolean CASSuccess = grandParent.update.compareAndSet(
+                grandParentUpdate,
+                new Update(State.DFLAG, operation)
+            );
 
             if (CASSuccess){
-                if (helpDelete(op))
+                if (helpDelete(operation))
                     return true;
             }else{
                 help(grandParent.update.get());
@@ -132,71 +126,100 @@ public class NonBlockingBinarySearchTree<T> implements Set<T> {
     }
 
     private void help(Update u) {
-        if (u.state == State.IFLAG) {
-            helpInsert((InsertInfo) u.info);
-            return;
-        }
-
-        if (u.state == State.MARK) {
-            helpMarked((DeleteInfo) u.info);
-            return;
-        }
-
-        if (u.state == State.DFLAG) {
-            helpDelete((DeleteInfo) u.info);
-            return;
+        switch (u.state) {
+            case IFLAG:
+                helpInsert((InsertInfo) u.info);
+                break;
+            case MARK:
+                helpMarked((DeleteInfo) u.info);
+                break;
+            case DFLAG:
+                helpDelete((DeleteInfo) u.info);
+                break;
         }
     }
 
-    private void helpMarked(DeleteInfo op) {
-        throw new NotImplementedException();
+    private void helpMarked(DeleteInfo operation) {
+        // Set other to point to the sibling of the node to which operation.leaf points
+        Node other;
+        // TODO: Check if these gets are safe. They should be.
+        if (operation.parent.right.get() == operation.leaf)
+            other = operation.parent.left.get();
+        else
+            other = operation.parent.right.get();
+
+        // Splice the node to which operation.parent points out of the tree, replacing it by other
+        compareAndSetChild(operation.grandParent, operation.parent, other);             // dchild CAS
+        compareAndSetUpdate(operation.grandParent.update,
+            new Update(State.DFLAG, operation), new Update(State.CLEAN, operation));    // dunflag CAS
     }
 
-    private boolean helpDelete(DeleteInfo op) {
-        throw new NotImplementedException();
-//        Update result;
-//
-//        result = op.p.update.compareAndSet(op.pupdate.get(), new Update(State.MARK, op));
-//        if (r)
+    private boolean helpDelete(DeleteInfo operation) {
+        boolean CASSuccess;
+
+        CASSuccess = operation.parent.update.compareAndSet(
+            operation.parentUpdate,
+            new Update(State.MARK, operation));
+
+        if (CASSuccess) { // Check the paper. Missing some condition?
+            helpMarked(operation);
+            return true;
+        } else {
+            help(operation.parent.update.get());
+
+            // backtrack CAS
+            compareAndSetUpdate(operation.grandParent.update,
+                new Update(State.DFLAG, operation), new Update(State.CLEAN, operation));
+            return false;
+        }
     }
 
     private SearchResult search(int key) {
-        InternalNode gp = null,
-            p = null;
-        Node l = root;
-        Update gpupdate = null,
-            pupdate = null;
+        InternalNode grandParent = null,
+            parent = null;
+        Node leaf = root;
+        Update grandParentUpdate = null,
+            parentUpdate = null;
 
-        while (l instanceof InternalNode){
-            gp = p;
-            p = (InternalNode) l;
-            gpupdate = pupdate;
-            // TODO: remove cast. Is the compiler drunk?
-            pupdate = (Update) p.update.get();
-            if (key < l.key){
-                l = (Node) p.left.get();
+        while (leaf instanceof InternalNode){
+            grandParent = parent;
+            parent = (InternalNode) leaf;
+            grandParentUpdate = parentUpdate;
+
+            parentUpdate = parent.update.get();
+            if (key < leaf.key){
+                leaf = parent.left.get();
             }else{
-                l = (Node) p.right.get();
+                leaf = parent.right.get();
             }
         }
-        return new SearchResult(gp, p, (Leaf) l, gpupdate, pupdate);
+        return new SearchResult(grandParent, parent, (Leaf) leaf, grandParentUpdate, parentUpdate);
     }
 
-    private void helpInsert(InsertInfo op) {
-        compareAndSetChild(op.p, op.l, op.newInternal);
+    private void helpInsert(InsertInfo operation) {
+        compareAndSetChild(operation.parent, operation.leaf, operation.newInternal);
 
-        Update update = op.p.update.get();
+        Update update = operation.parent.update.get();
         if (update.state != State.IFLAG)
             // Someone else helped me
             return;
 
-        // TODO: can we set the new Update to null?
-        op.p.update.compareAndSet(update, new Update(State.CLEAN, op));
+        // TODO: can we set the new Update.info to null?
+        operation.parent.update.compareAndSet(update, new Update(State.CLEAN, operation));
     }
 
-    private boolean compareAndSetChild(InternalNode parent, Node old, Node new_) {
-        AtomicReference<Node> child = new_.key < parent.key ? parent.left : parent.right;
-        return child.compareAndSet(old, new_);
+    private boolean compareAndSetChild(InternalNode parent, Node oldChild, Node newChild) {
+        AtomicReference<Node> childUpdater = newChild.key < parent.key ? parent.left : parent.right;
+        return childUpdater.compareAndSet(oldChild, newChild);
+    }
+
+    private boolean compareAndSetUpdate(AtomicReference<Update> reference, Update expectedUpdate, Update newUpdate){
+        Update tmp = reference.get();
+        if (expectedUpdate.state != tmp.state || expectedUpdate.info != tmp.info)
+            return false;
+
+        return reference.compareAndSet(tmp, newUpdate);
+
     }
 
     @Override
