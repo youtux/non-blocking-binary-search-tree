@@ -16,4 +16,13 @@ class Update {
     public String toString() {
         return "Update(" + state + ", " + info + ")";
     }
+
+    @Override
+    public boolean equals(Object other) {
+        if (other instanceof Update){
+            Update ot = (Update) other;
+            return this.state == ot.state && this.info == ot.info;
+        }
+        return false;
+    }
 }

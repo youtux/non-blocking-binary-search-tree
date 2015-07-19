@@ -1,6 +1,8 @@
 package it.unitn.studenti.alessiobogon.concurrency.nbbst;
 
 import it.unitn.studenti.alessiobogon.concurrency.Set;
+
+import java.util.HashSet;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
@@ -74,14 +76,13 @@ public class NonBlockingBinarySearchTree<T> implements Set<T> {
             }else{
                 // TODO: the iflag CAS failed. Help the operation that cause failure
                 // TODO: check my correctness
-                System.out.print("Insert CAS failed");
+//                System.out.print("Insert CAS failed");
                 help(parent.update.get());
             }
 
 
         }
     }
-
 
     @Override
     public boolean delete(T item) {
@@ -155,21 +156,27 @@ public class NonBlockingBinarySearchTree<T> implements Set<T> {
     }
 
     private boolean helpDelete(DeleteInfo operation) {
-        boolean CASSuccess;
+        Update newUpdate = new Update(State.MARK, operation);
 
-        CASSuccess = operation.parent.update.compareAndSet(
+        boolean CASSuccess = operation.parent.update.compareAndSet(
             operation.parentUpdate,
-            new Update(State.MARK, operation));
+            newUpdate);
 
-        if (CASSuccess) { // Check the paper. Missing some condition?
+        Update result = operation.parent.update.get();
+
+        boolean success = CASSuccess ||
+                result.equals(operation.parentUpdate);
+
+        if (success) {
             helpMarked(operation);
             return true;
         } else {
-            help(operation.parent.update.get());
+            help(result);
 
             // backtrack CAS
             compareAndSetUpdate(operation.grandParent.update,
-                new Update(State.DFLAG, operation), new Update(State.CLEAN, operation));
+                    new Update(State.DFLAG, operation),
+                    new Update(State.CLEAN, operation))
             return false;
         }
     }
@@ -198,28 +205,22 @@ public class NonBlockingBinarySearchTree<T> implements Set<T> {
 
     private void helpInsert(InsertInfo operation) {
         compareAndSetChild(operation.parent, operation.leaf, operation.newInternal);
-
-        Update update = operation.parent.update.get();
-        if (update.state != State.IFLAG)
-            // Someone else helped me
-            return;
-
-        // TODO: can we set the new Update.info to null?
-        operation.parent.update.compareAndSet(update, new Update(State.CLEAN, operation));
+        compareAndSetUpdate(operation.parent.update,
+                new Update(State.IFLAG, operation),
+                new Update(State.CLEAN, operation));
     }
 
-    private boolean compareAndSetChild(InternalNode parent, Node oldChild, Node newChild) {
+    protected boolean compareAndSetChild(InternalNode parent, Node oldChild, Node newChild) {
         AtomicReference<Node> childUpdater = newChild.key < parent.key ? parent.left : parent.right;
         return childUpdater.compareAndSet(oldChild, newChild);
     }
 
-    private boolean compareAndSetUpdate(AtomicReference<Update> reference, Update expectedUpdate, Update newUpdate){
+    protected boolean compareAndSetUpdate(AtomicReference<Update> reference, Update expectedUpdate, Update newUpdate){
         Update tmp = reference.get();
-        if (expectedUpdate.state != tmp.state || expectedUpdate.info != tmp.info)
-            return false;
-
-        return reference.compareAndSet(tmp, newUpdate);
-
+        if (expectedUpdate.equals(tmp)){
+            return reference.compareAndSet(tmp, newUpdate);
+        }
+        return false;
     }
 
     @Override
@@ -227,8 +228,65 @@ public class NonBlockingBinarySearchTree<T> implements Set<T> {
         return root.toString();
     }
 
-//    public static void main(String[] args) {
-//        NonBlockingBinarySearchTree<Integer> bst = new NonBlockingBinarySearchTree<>();
-//        bst.find(new Integer(2));
-//    }
+    public String dotify() {
+        String result = "strict digraph {\n";
+        result += dotifyAux(root);
+
+        result += "}";
+
+        return result;
+    }
+
+    protected String dotifyAux(Node n) {
+        String result = "";
+        HashSet<String> leaf_set = new HashSet<String>();
+        if (n instanceof Leaf){
+            Leaf node = (Leaf) n;
+            result += "\t" + dotifyNodeMetadata(node) + ";\n";
+        } else {
+            InternalNode node = (InternalNode) n;
+            String sameRank = "\t{rank=same ";
+
+            Node left = node.left.get(), right = node.right.get();
+            if (left != null) {
+                result += "\t" + dotifyNodeName(node) + " -> " + dotifyNodeName(left) + ";\n";
+                result += dotifyAux(left);
+                sameRank += dotifyNodeName(left) + " -> ";
+            }
+            result += "\t" + dotifyNodeName(node) + " -> Space_" + node.key + " [style=invis];\n";
+
+            sameRank += "Space_" + node.key;
+            if (right != null) {
+                result += "\t" + dotifyNodeName(node) + " -> " + dotifyNodeName(right) + ";\n";
+                result += dotifyAux(right);
+                sameRank += " -> " + dotifyNodeName(right);
+            }
+            sameRank += "[style=invis]}\n";
+
+            result += "\t" + dotifyNodeMetadata(node) + ";\n";
+            result += sameRank;
+            result += "\t" + dotifySpaceMetadata(node) + ";\n";
+        }
+        return result;
+    }
+
+    protected String dotifyNodeName(Node node){
+        if (node instanceof Leaf) return "Leaf_" + node.key;
+        if (node instanceof InternalNode) return "InternalNode_" + node.key;
+        return "";
+    }
+
+    protected String dotifyNodeMetadata(Node node) {
+        if (node instanceof Leaf) {
+            return dotifyNodeName(node) + " [shape=box, label=" + ((Leaf) node).item + "]";
+        }
+        if (node instanceof InternalNode) {
+            return dotifyNodeName(node) + " [label=" + node.key + "]";
+        }
+        return "";
+    }
+
+    protected String dotifySpaceMetadata(InternalNode parent) {
+        return "Space_" + parent.key + " [label=\"\",width=1,style=invis]";
+    }
 }

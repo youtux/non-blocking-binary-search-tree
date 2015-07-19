@@ -46,7 +46,7 @@ public class Main {
 //        Method insert = Set.class.getMethod("insert", Object.class);
 //        Method find = Set.class.getMethod("find", Object.class);
 //
-        final Set bst = new NonBlockingBinarySearchTree<Integer>();
+        final NonBlockingBinarySearchTree bst = new NonBlockingBinarySearchTree<Integer>();
 //        Operation ops1[] = new Operation[]{
 //            new Operation(bst, insert, 1),
 //            new Operation(bst, insert, 2)
@@ -62,26 +62,25 @@ public class Main {
             public void run(){
                 bst.insert(1);
                 bst.insert(2);
+                bst.insert(0);
             }
         };
         Thread t2 = new Thread(){
             public void run(){
-                bst.insert(3);
-                bst.insert(4);
+                bst.delete(2);
             }
         };
         Thread t3 = new Thread(){
             public void run(){
-                bst.delete(1);
-                bst.delete(4);
+                bst.insert(3);
             }
         };
         t1.start();
+        t1.join();
         t2.start();
         t3.start();
-        t1.join();
         t2.join();
         t3.join();
-        System.out.println(bst);
+        System.out.println(bst.dotify());
     }
 }
