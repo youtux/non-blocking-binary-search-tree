@@ -3,6 +3,8 @@ package it.unitn.studenti.alessiobogon.concurrency.nbbst;
 import it.unitn.studenti.alessiobogon.concurrency.ConcurrentFormatter;
 import it.unitn.studenti.alessiobogon.concurrency.Set;
 
+import java.io.FileNotFoundException;
+import java.io.PrintWriter;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Type;
@@ -12,36 +14,8 @@ import java.util.logging.*;
  * Created by Alessio Bogon on 11/06/15.
  */
 public class Main {
-    static class Operation {
-        final Method method;
-        final Object value;
-        final Object object;
+    public static final String GRAPH_OUTPUT_PATH = "graph.dot";
 
-        Operation(Object obj, Method method, Object value) {
-            this.object = obj;
-            this.method = method;
-            this.value = value;
-        }
-    }
-    static class MyThread implements Runnable {
-        final Operation[] operations;
-
-        MyThread(Operation[] operations){
-            this.operations = operations;
-        }
-        @Override
-        public void run() {
-            for (Operation op : operations){
-                try {
-                    op.method.invoke(op.object, op.value);
-                } catch (IllegalAccessException e) {
-                    e.printStackTrace();
-                } catch (InvocationTargetException e) {
-                    e.printStackTrace();
-                }
-            }
-        }
-    }
     public static void main(String[] args) throws NoSuchMethodException, InterruptedException {
         Handler ch = new ConsoleHandler();
         ch.setLevel(Level.FINEST);
@@ -82,6 +56,16 @@ public class Main {
         t3.start();
         t2.join();
         t3.join();
-//        System.out.println(bst.dotify());
+
+
+        try {
+            PrintWriter graphOutput = new PrintWriter(GRAPH_OUTPUT_PATH);
+            graphOutput.write(bst.dotify());
+            graphOutput.close();
+            mainLogger.info("Graph written into " + GRAPH_OUTPUT_PATH);
+        } catch (FileNotFoundException e) {
+            System.err.println("Unable to write into " + GRAPH_OUTPUT_PATH);
+            e.printStackTrace();
+        }
     }
 }
