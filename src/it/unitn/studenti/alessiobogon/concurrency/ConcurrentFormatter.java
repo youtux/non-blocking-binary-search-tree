@@ -10,7 +10,7 @@ import java.util.logging.*;
 public class ConcurrentFormatter extends Formatter {
 
     private static final String LINE_SEPARATOR = System.getProperty("line.separator");
-    private static final MessageFormat messageFormat = new MessageFormat("[{0,date,HH:mm:ss.S}] Thread#{1}:{2} {3}:{4}" + LINE_SEPARATOR);
+    private static final MessageFormat messageFormat = new MessageFormat("[{0,date,HH:mm:ss.S}] Thread#{1}:{2}{3}: {4}" + LINE_SEPARATOR);
 
     public ConcurrentFormatter()
     {
