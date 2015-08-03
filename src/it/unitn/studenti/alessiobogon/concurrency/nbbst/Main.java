@@ -5,6 +5,7 @@ import it.unitn.studenti.alessiobogon.concurrency.Set;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Type;
+import java.util.logging.*;
 
 /**
  * Created by Alessio Bogon on 11/06/15.
@@ -46,7 +47,15 @@ public class Main {
 //        Method insert = Set.class.getMethod("insert", Object.class);
 //        Method find = Set.class.getMethod("find", Object.class);
 //
+        Logger logger = Logger.getLogger(NonBlockingBinarySearchTree.class.getName());
+        logger.setLevel(Level.ALL);
+
+        Handler ch = new ConsoleHandler();
+        ch.setLevel(Level.ALL);
+        logger.addHandler(ch);
+
         final NonBlockingBinarySearchTree bst = new NonBlockingBinarySearchTree<Integer>();
+
 //        Operation ops1[] = new Operation[]{
 //            new Operation(bst, insert, 1),
 //            new Operation(bst, insert, 2)
@@ -81,6 +90,6 @@ public class Main {
         t3.start();
         t2.join();
         t3.join();
-        System.out.println(bst.dotify());
+//        System.out.println(bst.dotify());
     }
 }

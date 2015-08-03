@@ -4,11 +4,14 @@ import it.unitn.studenti.alessiobogon.concurrency.Set;
 
 import java.util.HashSet;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.logging.Logger;
 
 /**
  * Created by Alessio Bogon on 11/06/15.
  */
 public class NonBlockingBinarySearchTree<T> implements Set<T> {
+    private static final Logger log = Logger.getLogger(NonBlockingBinarySearchTree.class.getName());
+
     private final Node root;
 
     public NonBlockingBinarySearchTree(){
@@ -34,7 +37,7 @@ public class NonBlockingBinarySearchTree<T> implements Set<T> {
     public boolean insert(T item){
         int key = item.hashCode();
 
-        Leaf newLeaf = new Leaf(item);
+        Leaf newLeaf = new Leaf<>(item);
 
         while (true){
             SearchResult searchResult = search(key);
@@ -52,7 +55,7 @@ public class NonBlockingBinarySearchTree<T> implements Set<T> {
                 continue;
             }
 
-            Leaf newSibling = new Leaf(leaf.item);
+            Leaf newSibling = new Leaf<>(leaf.item);
             Leaf left, right;
 
             if (newLeaf.key < newSibling.key){
@@ -71,12 +74,11 @@ public class NonBlockingBinarySearchTree<T> implements Set<T> {
 
             boolean CASSuccess = parent.update.compareAndSet(parentUpdate, new Update(State.IFLAG, operation));
             if (CASSuccess){
+                log.fine("iflag[key=" + key + "] success");
                 helpInsert(operation);
                 return true;
             }else{
-                // TODO: the iflag CAS failed. Help the operation that cause failure
-                // TODO: check my correctness
-//                System.out.print("Insert CAS failed");
+                log.fine("iflag[key=" + key + "] fail");
                 help(parent.update.get());
             }
 
@@ -116,9 +118,11 @@ public class NonBlockingBinarySearchTree<T> implements Set<T> {
             );
 
             if (CASSuccess){
+                log.fine("dflag[key=" + key + "] success");
                 if (helpDelete(operation))
                     return true;
             }else{
+                log.fine("dflag[key=" + key + "] fail");
                 help(grandParent.update.get());
             }
 
@@ -151,8 +155,11 @@ public class NonBlockingBinarySearchTree<T> implements Set<T> {
 
         // Splice the node to which operation.parent points out of the tree, replacing it by other
         compareAndSetChild(operation.grandParent, operation.parent, other);             // dchild CAS
+        log.fine("dchild[key=" + operation.grandParent.key + "]");
+
         compareAndSetUpdate(operation.grandParent.update,
             new Update(State.DFLAG, operation), new Update(State.CLEAN, operation));    // dunflag CAS
+        log.fine("dunflag[key=" + operation.grandParent.key + "]");
     }
 
     private boolean helpDelete(DeleteInfo operation) {
@@ -168,15 +175,17 @@ public class NonBlockingBinarySearchTree<T> implements Set<T> {
                 result.equals(operation.parentUpdate);
 
         if (success) {
+            log.fine("mark[key=" + operation.parent.key + "] success");
             helpMarked(operation);
             return true;
         } else {
+            log.fine("mark[key=" + operation.parent.key + "] fail");
             help(result);
 
             // backtrack CAS
             compareAndSetUpdate(operation.grandParent.update,
                     new Update(State.DFLAG, operation),
-                    new Update(State.CLEAN, operation))
+                    new Update(State.CLEAN, operation));
             return false;
         }
     }
@@ -205,9 +214,12 @@ public class NonBlockingBinarySearchTree<T> implements Set<T> {
 
     private void helpInsert(InsertInfo operation) {
         compareAndSetChild(operation.parent, operation.leaf, operation.newInternal);
+        log.fine("ichild[key=" + operation.parent.key + "] success");
+
         compareAndSetUpdate(operation.parent.update,
                 new Update(State.IFLAG, operation),
                 new Update(State.CLEAN, operation));
+        log.fine("iunflag[key=" + operation.parent.key + "] success");
     }
 
     protected boolean compareAndSetChild(InternalNode parent, Node oldChild, Node newChild) {
