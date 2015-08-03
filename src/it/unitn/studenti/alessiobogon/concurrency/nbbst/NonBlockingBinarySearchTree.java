@@ -4,6 +4,7 @@ import it.unitn.studenti.alessiobogon.concurrency.Set;
 
 import java.util.HashSet;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
@@ -27,17 +28,18 @@ public class NonBlockingBinarySearchTree<T> implements Set<T> {
     }
     @Override
     public boolean find(T item) {
-        log.entering(NonBlockingBinarySearchTree.class.getName(), "find", item);
+        log.log(Level.FINE, "ENTRY {0}", item);
         int key = item.hashCode();
 
         SearchResult result = search(key);
-        log.exiting(NonBlockingBinarySearchTree.class.getName(), "find", result.leaf.key == key);
+
+        log.log(Level.FINE, "RETURN {0}", result.leaf.key == key);
         return result.leaf.key == key;
     }
 
     @Override
     public boolean insert(T item){
-        log.entering(NonBlockingBinarySearchTree.class.getName(), "insert", item);
+        log.log(Level.FINE, "ENTRY {0}", item);
         int key = item.hashCode();
 
         Leaf newLeaf = new Leaf<>(item);
@@ -50,7 +52,7 @@ public class NonBlockingBinarySearchTree<T> implements Set<T> {
 
             if (leaf.key == key){
                 // Cannot insert duplicate key
-                log.exiting(NonBlockingBinarySearchTree.class.getName(), "insert", false);
+                log.log(Level.FINE, "RETURN {0}", false);
                 return false;
             }
             if (parentUpdate.state != State.CLEAN){
@@ -78,12 +80,13 @@ public class NonBlockingBinarySearchTree<T> implements Set<T> {
 
             boolean CASSuccess = parent.update.compareAndSet(parentUpdate, new Update(State.IFLAG, operation));
             if (CASSuccess){
-                log.finest("iflag[key=" + key + "] success");
+                log.finest("iflag[key=" + parent.key + "] success");
                 helpInsert(operation);
-                log.exiting(NonBlockingBinarySearchTree.class.getName(), "insert", true);
+
+                log.log(Level.FINE, "RETURN {0}", true);
                 return true;
             }else{
-                log.finest("iflag[key=" + key + "] fail");
+                log.finest("iflag[key=" + parent.key + "] fail");
                 help(parent.update.get());
             }
         }
@@ -91,7 +94,7 @@ public class NonBlockingBinarySearchTree<T> implements Set<T> {
 
     @Override
     public boolean delete(T item) {
-        log.entering(NonBlockingBinarySearchTree.class.getName(), "delete", item);
+        log.log(Level.FINE, "ENTRY {0}", item);
         int key = item.hashCode();
 
         while (true) {
@@ -103,7 +106,7 @@ public class NonBlockingBinarySearchTree<T> implements Set<T> {
             Update grandParentUpdate = searchResult.grandParentUpdate;
 
             if (leaf.key != key){
-                log.exiting(NonBlockingBinarySearchTree.class.getName(), "delete", false);
+                log.log(Level.FINE, "RETURN {0}", false);
                 return false;
             }
 
@@ -126,7 +129,7 @@ public class NonBlockingBinarySearchTree<T> implements Set<T> {
             if (CASSuccess){
                 log.finest("dflag[key=" + key + "] success");
                 if (helpDelete(operation)) {
-                    log.exiting(NonBlockingBinarySearchTree.class.getName(), "delete", true);
+                    log.log(Level.FINE, "RETURN {0}", true);
                     return true;
                 }
             }else{
@@ -137,6 +140,7 @@ public class NonBlockingBinarySearchTree<T> implements Set<T> {
     }
 
     private void help(Update u) {
+        log.log(Level.FINER, "ENTRY {0}", u);
         switch (u.state) {
             case IFLAG:
                 helpInsert((InsertInfo) u.info);
@@ -148,9 +152,25 @@ public class NonBlockingBinarySearchTree<T> implements Set<T> {
                 helpDelete((DeleteInfo) u.info);
                 break;
         }
+        log.log(Level.FINER, "RETURN");
+    }
+
+    private void helpInsert(InsertInfo operation) {
+        log.log(Level.FINER, "ENTRY {0}", operation);
+
+        compareAndSetChild(operation.parent, operation.leaf, operation.newInternal);
+        log.finest("ichild[key=" + operation.parent.key + "]");
+
+        compareAndSetUpdate(operation.parent.update,
+                new Update(State.IFLAG, operation),
+                new Update(State.CLEAN, operation));
+        log.finest("iunflag[key=" + operation.parent.key + "]");
+
+        log.log(Level.FINER, "RETURN");
     }
 
     private void helpMarked(DeleteInfo operation) {
+        log.log(Level.FINER, "ENTRY {0}", operation);
         // Set other to point to the sibling of the node to which operation.leaf points
         Node other;
         // TODO: Check if these gets are safe. They should be.
@@ -166,9 +186,13 @@ public class NonBlockingBinarySearchTree<T> implements Set<T> {
         compareAndSetUpdate(operation.grandParent.update,
                 new Update(State.DFLAG, operation), new Update(State.CLEAN, operation));    // dunflag CAS
         log.finest("dunflag[key=" + operation.grandParent.key + "]");
+
+        log.log(Level.FINER, "RETURN");
     }
 
     private boolean helpDelete(DeleteInfo operation) {
+        log.log(Level.FINER, "ENTRY {0}", operation);
+
         Update newUpdate = new Update(State.MARK, operation);
 
         boolean CASSuccess = operation.parent.update.compareAndSet(
@@ -188,7 +212,8 @@ public class NonBlockingBinarySearchTree<T> implements Set<T> {
 
         if (CASSuccess || alreadyMarked) {
             helpMarked(operation);
-            log.exiting(NonBlockingBinarySearchTree.class.getName(), "helpDelete", true);
+
+            log.log(Level.FINER, "RETURN {0}", true);
             return true;
         } else {
             help(result);
@@ -198,13 +223,15 @@ public class NonBlockingBinarySearchTree<T> implements Set<T> {
                     new Update(State.DFLAG, operation),
                     new Update(State.CLEAN, operation));
             log.finest("backtrack[grandParent=" + operation.grandParent.key + "]");
-            log.exiting(NonBlockingBinarySearchTree.class.getName(), "helpDelete", false);
+
+            log.log(Level.FINER, "RETURN {0}", false);
             return false;
         }
     }
 
     private SearchResult search(int key) {
-        log.entering(this.getClass().getName(), "search", key);
+        log.log(Level.FINER, "ENTRY {0}", key);
+
         InternalNode grandParent = null,
             parent = null;
         Node leaf = root;
@@ -224,18 +251,9 @@ public class NonBlockingBinarySearchTree<T> implements Set<T> {
             }
         }
         SearchResult result = new SearchResult(grandParent, parent, (Leaf) leaf, grandParentUpdate, parentUpdate);
-        log.exiting(this.getClass().getName(), "search", result);
+
+        log.log(Level.FINER, "RETURN {0}", result);
         return result;
-    }
-
-    private void helpInsert(InsertInfo operation) {
-        compareAndSetChild(operation.parent, operation.leaf, operation.newInternal);
-        log.finest("ichild[key=" + operation.parent.key + "] success");
-
-        compareAndSetUpdate(operation.parent.update,
-                new Update(State.IFLAG, operation),
-                new Update(State.CLEAN, operation));
-        log.finest("iunflag[key=" + operation.parent.key + "] success");
     }
 
     protected boolean compareAndSetChild(InternalNode parent, Node oldChild, Node newChild) {
@@ -259,15 +277,13 @@ public class NonBlockingBinarySearchTree<T> implements Set<T> {
     public String dotify() {
         String result = "strict digraph {\n";
         result += dotifyAux(root);
-
         result += "}";
 
         return result;
     }
 
-    protected String dotifyAux(Node n) {
+    private String dotifyAux(Node n) {
         String result = "";
-        HashSet<String> leaf_set = new HashSet<String>();
         if (n instanceof Leaf){
             Leaf node = (Leaf) n;
             result += "\t" + dotifyNodeMetadata(node) + ";\n";
@@ -298,13 +314,13 @@ public class NonBlockingBinarySearchTree<T> implements Set<T> {
         return result;
     }
 
-    protected String dotifyNodeName(Node node){
+    private String dotifyNodeName(Node node){
         if (node instanceof Leaf) return "Leaf_" + node.key;
         if (node instanceof InternalNode) return "InternalNode_" + node.key;
         return "";
     }
 
-    protected String dotifyNodeMetadata(Node node) {
+    private String dotifyNodeMetadata(Node node) {
         if (node instanceof Leaf) {
             return dotifyNodeName(node) + " [shape=box, label=" + ((Leaf) node).item + "]";
         }
@@ -314,7 +330,7 @@ public class NonBlockingBinarySearchTree<T> implements Set<T> {
         return "";
     }
 
-    protected String dotifySpaceMetadata(InternalNode parent) {
+    private String dotifySpaceMetadata(InternalNode parent) {
         return "Space_" + parent.key + " [label=\"\",width=1,style=invis]";
     }
 }
