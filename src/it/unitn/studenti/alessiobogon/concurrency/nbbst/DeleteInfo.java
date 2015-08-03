@@ -15,4 +15,14 @@ class DeleteInfo extends Info{
         this.grandParent = grandParent;
         this.parentUpdate = parentUpdate;
     }
+
+    @Override
+    public String toString() {
+        return String.format("DeleteInfo[grandParentKey=%s, parentKey=%s, leafKey=%s, parentUpdate=%s]",
+                grandParent.key,
+                parent.key,
+                leaf.key,
+                parentUpdate
+                );
+    }
 }

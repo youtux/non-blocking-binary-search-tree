@@ -13,4 +13,13 @@ class InsertInfo extends Info {
         this.leaf = leaf;
         this.newInternal = newInternal;
     }
+
+    @Override
+    public String toString() {
+        return String.format("InsertInfo[parentKey=%s, leafKey=%s, newInternalKey=%s",
+                parent.key,
+                leaf.key,
+                newInternal.key
+        );
+    }
 }
