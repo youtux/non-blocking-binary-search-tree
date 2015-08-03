@@ -44,7 +44,7 @@ public class Main {
     }
     public static void main(String[] args) throws NoSuchMethodException, InterruptedException {
         Handler ch = new ConsoleHandler();
-        ch.setLevel(Level.FINER);
+        ch.setLevel(Level.FINEST);
         ch.setFormatter(new ConcurrentFormatter());
 
         Logger bstlogger = Logger.getLogger(NonBlockingBinarySearchTree.class.getName());
