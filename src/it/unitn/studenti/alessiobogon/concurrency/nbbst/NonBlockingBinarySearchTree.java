@@ -27,14 +27,17 @@ public class NonBlockingBinarySearchTree<T> implements Set<T> {
     }
     @Override
     public boolean find(T item) {
+        log.entering(NonBlockingBinarySearchTree.class.getName(), "find", item);
         int key = item.hashCode();
 
         SearchResult result = search(key);
+        log.exiting(NonBlockingBinarySearchTree.class.getName(), "find", result.leaf.key == key);
         return result.leaf.key == key;
     }
 
     @Override
     public boolean insert(T item){
+        log.entering(NonBlockingBinarySearchTree.class.getName(), "insert", item);
         int key = item.hashCode();
 
         Leaf newLeaf = new Leaf<>(item);
@@ -47,6 +50,7 @@ public class NonBlockingBinarySearchTree<T> implements Set<T> {
 
             if (leaf.key == key){
                 // Cannot insert duplicate key
+                log.exiting(NonBlockingBinarySearchTree.class.getName(), "insert", false);
                 return false;
             }
             if (parentUpdate.state != State.CLEAN){
@@ -74,20 +78,20 @@ public class NonBlockingBinarySearchTree<T> implements Set<T> {
 
             boolean CASSuccess = parent.update.compareAndSet(parentUpdate, new Update(State.IFLAG, operation));
             if (CASSuccess){
-                log.fine("iflag[key=" + key + "] success");
+                log.finest("iflag[key=" + key + "] success");
                 helpInsert(operation);
+                log.exiting(NonBlockingBinarySearchTree.class.getName(), "insert", true);
                 return true;
             }else{
-                log.fine("iflag[key=" + key + "] fail");
+                log.finest("iflag[key=" + key + "] fail");
                 help(parent.update.get());
             }
-
-
         }
     }
 
     @Override
     public boolean delete(T item) {
+        log.entering(NonBlockingBinarySearchTree.class.getName(), "delete", item);
         int key = item.hashCode();
 
         while (true) {
@@ -98,8 +102,10 @@ public class NonBlockingBinarySearchTree<T> implements Set<T> {
             Update parentUpdate = searchResult.parentUpdate;
             Update grandParentUpdate = searchResult.grandParentUpdate;
 
-            if (leaf.key != key)
+            if (leaf.key != key){
+                log.exiting(NonBlockingBinarySearchTree.class.getName(), "delete", false);
                 return false;
+            }
 
             if (grandParentUpdate.state != State.CLEAN) {
                 help(grandParentUpdate);
@@ -118,15 +124,15 @@ public class NonBlockingBinarySearchTree<T> implements Set<T> {
             );
 
             if (CASSuccess){
-                log.fine("dflag[key=" + key + "] success");
-                if (helpDelete(operation))
+                log.finest("dflag[key=" + key + "] success");
+                if (helpDelete(operation)) {
+                    log.exiting(NonBlockingBinarySearchTree.class.getName(), "delete", true);
                     return true;
+                }
             }else{
-                log.fine("dflag[key=" + key + "] fail");
+                log.finest("dflag[key=" + key + "] fail");
                 help(grandParent.update.get());
             }
-
-
         }
     }
 
@@ -155,42 +161,50 @@ public class NonBlockingBinarySearchTree<T> implements Set<T> {
 
         // Splice the node to which operation.parent points out of the tree, replacing it by other
         compareAndSetChild(operation.grandParent, operation.parent, other);             // dchild CAS
-        log.fine("dchild[key=" + operation.grandParent.key + "]");
+        log.finest("dchild[key=" + operation.grandParent.key + "]");
 
         compareAndSetUpdate(operation.grandParent.update,
-            new Update(State.DFLAG, operation), new Update(State.CLEAN, operation));    // dunflag CAS
-        log.fine("dunflag[key=" + operation.grandParent.key + "]");
+                new Update(State.DFLAG, operation), new Update(State.CLEAN, operation));    // dunflag CAS
+        log.finest("dunflag[key=" + operation.grandParent.key + "]");
     }
 
     private boolean helpDelete(DeleteInfo operation) {
         Update newUpdate = new Update(State.MARK, operation);
 
         boolean CASSuccess = operation.parent.update.compareAndSet(
-            operation.parentUpdate,
-            newUpdate);
+                operation.parentUpdate,
+                newUpdate);
 
         Update result = operation.parent.update.get();
+        boolean alreadyMarked = result.equals(operation.parentUpdate);
 
-        boolean success = CASSuccess ||
-                result.equals(operation.parentUpdate);
+        if (CASSuccess){
+            log.finest("mark[key=" + operation.parent.key + "] success");
+        }else if (alreadyMarked) {
+            log.finest("mark[key=" + operation.parent.key + "] done by another thread");
+        }else {
+            log.finest("mark[key=" + operation.parent.key + "] fail");
+        }
 
-        if (success) {
-            log.fine("mark[key=" + operation.parent.key + "] success");
+        if (CASSuccess || alreadyMarked) {
             helpMarked(operation);
+            log.exiting(NonBlockingBinarySearchTree.class.getName(), "helpDelete", true);
             return true;
         } else {
-            log.fine("mark[key=" + operation.parent.key + "] fail");
             help(result);
 
             // backtrack CAS
             compareAndSetUpdate(operation.grandParent.update,
                     new Update(State.DFLAG, operation),
                     new Update(State.CLEAN, operation));
+            log.finest("backtrack[grandParent=" + operation.grandParent.key + "]");
+            log.exiting(NonBlockingBinarySearchTree.class.getName(), "helpDelete", false);
             return false;
         }
     }
 
     private SearchResult search(int key) {
+        log.entering(this.getClass().getName(), "search", key);
         InternalNode grandParent = null,
             parent = null;
         Node leaf = root;
@@ -209,17 +223,19 @@ public class NonBlockingBinarySearchTree<T> implements Set<T> {
                 leaf = parent.right.get();
             }
         }
-        return new SearchResult(grandParent, parent, (Leaf) leaf, grandParentUpdate, parentUpdate);
+        SearchResult result = new SearchResult(grandParent, parent, (Leaf) leaf, grandParentUpdate, parentUpdate);
+        log.exiting(this.getClass().getName(), "search", result);
+        return result;
     }
 
     private void helpInsert(InsertInfo operation) {
         compareAndSetChild(operation.parent, operation.leaf, operation.newInternal);
-        log.fine("ichild[key=" + operation.parent.key + "] success");
+        log.finest("ichild[key=" + operation.parent.key + "] success");
 
         compareAndSetUpdate(operation.parent.update,
                 new Update(State.IFLAG, operation),
                 new Update(State.CLEAN, operation));
-        log.fine("iunflag[key=" + operation.parent.key + "] success");
+        log.finest("iunflag[key=" + operation.parent.key + "] success");
     }
 
     protected boolean compareAndSetChild(InternalNode parent, Node oldChild, Node newChild) {

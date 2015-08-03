@@ -1,5 +1,6 @@
 package it.unitn.studenti.alessiobogon.concurrency.nbbst;
 
+import it.unitn.studenti.alessiobogon.concurrency.ConcurrentFormatter;
 import it.unitn.studenti.alessiobogon.concurrency.Set;
 
 import java.lang.reflect.InvocationTargetException;
@@ -42,31 +43,22 @@ public class Main {
         }
     }
     public static void main(String[] args) throws NoSuchMethodException, InterruptedException {
-//        Class s = Set.class;
-//        Method[] ms = s.getMethods();
-//        Method insert = Set.class.getMethod("insert", Object.class);
-//        Method find = Set.class.getMethod("find", Object.class);
-//
-        Logger logger = Logger.getLogger(NonBlockingBinarySearchTree.class.getName());
-        logger.setLevel(Level.ALL);
-
         Handler ch = new ConsoleHandler();
-        ch.setLevel(Level.ALL);
-        logger.addHandler(ch);
+        ch.setLevel(Level.FINER);
+        ch.setFormatter(new ConcurrentFormatter());
 
-        final NonBlockingBinarySearchTree bst = new NonBlockingBinarySearchTree<Integer>();
+        Logger bstlogger = Logger.getLogger(NonBlockingBinarySearchTree.class.getName());
+        bstlogger.setLevel(Level.ALL);
+        bstlogger.addHandler(ch);
 
-//        Operation ops1[] = new Operation[]{
-//            new Operation(bst, insert, 1),
-//            new Operation(bst, insert, 2)
-//        };
-//        Operation ops2[] = new Operation[]{
-//            new Operation(bst, insert, 3),
-//            new Operation(bst, insert, 4)
-//        };
-//
-//        Thread t1 = new Thread(new MyThread(ops1));
-//        Thread t2 = new Thread(new MyThread(ops2));
+        final Logger mainLogger = Logger.getAnonymousLogger();
+        mainLogger.setLevel(Level.ALL);
+        mainLogger.addHandler(ch);
+
+
+        final NonBlockingBinarySearchTree bst = new NonBlockingBinarySearchTree<>();
+
+
         Thread t1 = new Thread(){
             public void run(){
                 bst.insert(1);
