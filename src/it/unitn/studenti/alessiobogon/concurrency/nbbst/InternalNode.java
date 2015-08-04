@@ -6,8 +6,8 @@ import java.util.concurrent.atomic.AtomicReference;
  * Created by Alessio Bogon on 11/06/15.
  */
 class InternalNode extends Node{
-    AtomicReference<Update> update;
-    AtomicReference<Node> left, right;
+    final AtomicReference<Update> update;
+    final AtomicReference<Node> left, right;
 
     InternalNode(int key, Node left, Node right, Update update) {
         super(key);
