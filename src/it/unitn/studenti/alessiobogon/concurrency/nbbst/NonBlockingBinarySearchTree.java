@@ -199,7 +199,7 @@ public class NonBlockingBinarySearchTree<T> implements Set<T> {
                 newUpdate);
 
         Update result = operation.parent.update.get();
-        boolean alreadyMarked = result.equals(operation.parentUpdate);
+        boolean alreadyMarked = result.equals(new Update(State.MARK, operation));
 
         if (CASSuccess){
             logger.finest("mark[key=" + operation.parent.key + "] success");
