@@ -20,7 +20,7 @@ class SearchResult{
 
     @Override
     public String toString() {
-        return String.format("SearchResult[grandParentKey=%s, parentKey=%s, leafKey=%s, grandParentUpdate=%s, parentUpdate=%s)",
+        return String.format("SearchResult[grandParentKey=%s, parentKey=%s, leafKey=%s, grandParentUpdate=%s, parentUpdate=%s]",
                 grandParent != null ? grandParent.key : "null",
                 parent != null ? parent.key : "null",
                 leaf != null ? leaf.key : "null",
