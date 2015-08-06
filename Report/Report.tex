@@ -43,9 +43,12 @@
 
 \section{Introduction} %(fold)
 \label{sec:introduction}
-This project is a non-blocking concurrent Java implementation of the binary search tree structure, and aims to reproduce the work of Ellen et al\cite{ellen10}. The basic interface that we target is the \texttt{Set<T>}, with the following operations: \texttt{find (T item)}, \texttt{insert(T item)} and \texttt{remove(T item)}. The class that implements it is \texttt{Non\-Blocking\-Binary\-Search\-Tree\-<T>}.
+This project is a non-blocking concurrent Java implementation of the binary search tree structure, and aims to reproduce the work of Ellen et al\cite{ellen10}.
+The basic interface that we target is the \texttt{Set<T>}, with the following operations: \texttt{find (T item)}, \texttt{insert(T item)} and \texttt{remove(T item)}.
+The class that implements it is \texttt{Non\-Blocking\-Binary\-Search\-Tree\-<T>}.
 
-All the implemented methods are total and lock-free, but the \texttt{find} method is also wait-free. This is due to the fact that \texttt{insert} and \texttt{delete} operations might need to adjust the tree in order to complete, while \texttt{find} can just look for the item without \emph{helping} other concurrent operations.
+All the implemented methods are total and lock-free, but the \texttt{find} method is also wait-free.
+This is due to the fact that \texttt{insert} and \texttt{delete} operations might need to adjust the tree in order to complete, while \texttt{find} can just look for the item without \emph{helping} other concurrent operations.
 
 
 % section introduction (end)
@@ -56,7 +59,10 @@ The program can be executed by running the provided script on UNIX platforms:
 \begin{verbatim}
     ./run.sh
 \end{verbatim}
-It basically compiles all the sources needed by the main class and then run it. Please ensure that the \texttt{java} executable is available in your \texttt{PATH}. You can also configure the verbosity level of the output inside the script, which allows to trace the various \ac{CAS} operations. The default level is \emph{FINE}, which shows the methods invocations and return values of the interface methods.
+It basically compiles all the sources needed by the main class and then run it.
+Please ensure that the \texttt{java} executable is available in your \texttt{PATH}.
+You can also configure the verbosity level of the output inside the script, which allows to trace the various \ac{CAS} operations.
+The default level is \emph{FINE}, which shows the methods invocations and return values of the interface methods.
 
 We report a simple execution where Thread1 inserts
 \begin{verbatim}
@@ -106,7 +112,9 @@ We report a simple execution where Thread1 inserts
 \label{sec:architecture}
 
 \paragraph{CAS semantics}
-In order to achieve the \emph{non-blocking} feature we use the Java variant of the \ac{CAS} operation, which is the compare-and-set. The key difference is that compare-and-swap returns the value the object had before the operation, while compare-and-set returns \emph{true} if and only if the operation has been completed successfully. For this reason, the Java implementation is not a 1:1 rewriting of the code given by the reference paper, and some trickery is needed when dealing with the compare-and-set results.
+In order to achieve the \emph{non-blocking} feature we use the Java variant of the \ac{CAS} operation, which is the compare-and-set.
+The key difference is that compare-and-swap returns the value the object had before the operation, while compare-and-set returns \emph{true} if and only if the operation has been completed successfully.
+For this reason, the Java implementation is not a 1:1 rewriting of the code given by the reference paper, and some trickery is needed when dealing with the compare-and-set results.
 
 \section{Tests} % (fold)
 \label{sec:tests}
