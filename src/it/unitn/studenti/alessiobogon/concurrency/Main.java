@@ -11,11 +11,21 @@ import it.unitn.studenti.alessiobogon.concurrency.nbbst.NonBlockingBinarySearchT
  */
 public class Main {
     public static final String GRAPH_OUTPUT_PATH = "graph.dot";
-    public static final Level logLevel = Level.FINEST;
+    public static final Level defaultLogLevel = Level.FINE;
 
     private static final Handler logHandler = new ConsoleHandler();
 
     private static void setupConsoleHandler() {
+        Level logLevel;
+        try {
+            logLevel = Level.parse(System.getProperty("logLevel"));
+        } catch (NullPointerException e) {
+            System.err.println("No logLevel provided, using default loglevel (" + defaultLogLevel.getName() + ")");
+            logLevel = defaultLogLevel;
+        } catch (IllegalArgumentException e) {
+            System.err.println("Not valid logLevel provided, using default logLevel (" + defaultLogLevel.getName() + ")");
+            logLevel = defaultLogLevel;
+        }
         logHandler.setLevel(logLevel);
         logHandler.setFormatter(new ConcurrentFormatter());
     }
