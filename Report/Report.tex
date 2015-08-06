@@ -1,0 +1,122 @@
+\documentclass[a4paper,draft,12pt]{article}
+
+\usepackage{times}
+\usepackage{url}
+\usepackage{hyperref}
+\usepackage{float}
+\usepackage{acronym}
+\usepackage{paralist}
+\usepackage{graphicx}
+\usepackage{listings}
+\usepackage{acronym}
+\usepackage{pdfpages}
+
+% \acrodef{EJB}{Enterprise Java Bean}
+\acrodef{CAS}{compare-and-swap}
+
+\lstset{ %
+    breaklines=true,
+    basicstyle=\footnotesize,
+    moredelim=[is][\bfseries]{[*}{*]}
+}
+
+% ----------------------------------------------------------------------------
+% Start the document
+%
+
+\title{\textbf{A Java implementation of Non-blocking Binary Search Trees}} % Article title
+
+\author{
+    \textsc{Alessio Bogon}\\[2mm] % Your name
+    \normalsize University of Trento - Master Degree in Computer Science\\ % Your institution
+    \normalsize Concurrency\\
+    \href{mailto:alessio.bogon@studenti.unitn.it}{alessio.bogon@studenti.unitn.it} % Your email address
+}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+% - In REPORT describe the main difficulties you encountered, how you solved
+% them, and explain informally why you believe it works
+
+\section{Introduction} %(fold)
+\label{sec:introduction}
+This project is a non-blocking concurrent Java implementation of the binary search tree structure, and aims to reproduce the work of Ellen et al\cite{ellen10}. The basic interface that we target is the \texttt{Set<T>}, with the following operations: \texttt{find (T item)}, \texttt{insert(T item)} and \texttt{remove(T item)}. The class that implements it is \texttt{Non\-Blocking\-Binary\-Search\-Tree\-<T>}.
+
+All the implemented methods are total and lock-free, but the \texttt{find} method is also wait-free. This is due to the fact that \texttt{insert} and \texttt{delete} operations might need to adjust the tree in order to complete, while \texttt{find} can just look for the item without \emph{helping} other concurrent operations.
+
+
+% section introduction (end)
+
+\section{Usage} % (fold)
+\label{sec:usage}
+The program can be executed by running the provided script on UNIX platforms:
+\begin{verbatim}
+    ./run.sh
+\end{verbatim}
+It basically compiles all the sources needed by the main class and then run it. Please ensure that the \texttt{java} executable is available in your \texttt{PATH}. You can also configure the verbosity level of the output inside the script, which allows to trace the various \ac{CAS} operations. The default level is \emph{FINE}, which shows the methods invocations and return values of the interface methods.
+
+We report a simple execution where Thread1 inserts
+\begin{verbatim}
+[...] Thread#13:    insert: ENTRY 10
+[...]
+[...] Thread#13:    insert: RETURN true
+[...] Thread#13:    insert: ENTRY 20
+[...]
+[...] Thread#13:    insert: RETURN true
+[...] Thread#13:    insert: ENTRY 30
+[...]
+[...] Thread#13:    insert: RETURN true
+[...] Thread#14:      delete: ENTRY 20
+[...]
+[...] Thread#14:      delete: dflag[key=20] success
+[...]
+[...] Thread#15:         insert: ENTRY 15
+[...]
+[...] Thread#15:         helpDelete: mark[key=30] success
+[...]
+[...] Thread#15:         helpMarked: dchild[key=20]
+[...] Thread#15:         helpMarked: dunflag[key=20]
+[...] Thread#15:         helpMarked: RETURN
+[...] Thread#15:         helpDelete: RETURN true
+[...] Thread#15:         help: RETURN
+[...]
+[...] Thread#15:         insert: iflag[key=20] success
+[...]
+[...] Thread#15:         helpInsert: ichild[key=20]
+[...] Thread#15:         helpInsert: iunflag[key=20]
+[...] Thread#15:         helpInsert: RETURN
+[...] Thread#15:         insert: RETURN true
+[...] Thread#14:      helpDelete: mark[key=30] done by another thread
+[...]
+[...] Thread#14:      helpMarked: dchild[key=20]
+[...] Thread#14:      helpMarked: dunflag[key=20]
+[...] Thread#14:      helpMarked: RETURN
+[...] Thread#14:      helpDelete: RETURN true
+[...] Thread#14:      delete: RETURN true
+[...]
+\end{verbatim}
+
+
+
+
+\section{Architecture} % (fold)
+\label{sec:architecture}
+
+\paragraph{CAS semantics}
+In order to achieve the \emph{non-blocking} feature we use the Java variant of the \ac{CAS} operation, which is the compare-and-set. The key difference is that compare-and-swap returns the value the object had before the operation, while compare-and-set returns \emph{true} if and only if the operation has been completed successfully. For this reason, the Java implementation is not a 1:1 rewriting of the code given by the reference paper, and some trickery is needed when dealing with the compare-and-set results.
+
+\section{Tests} % (fold)
+\label{sec:tests}
+
+% section tests (end)
+
+
+\begin{thebibliography}{9}
+    \bibitem{ellen10} Ellen, F., Fatourou, P., Ruppert, E., and van Breugel, F. \emph{Non-blocking Binary Search Trees}. Proceedings of the 29th Annual ACM Symposium on Principles of Distributed Computing (PODC), 131–140, 2010.
+\end{thebibliography}
+
+
+\end{document}
