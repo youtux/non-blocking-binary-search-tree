@@ -60,56 +60,63 @@ The program can be executed by running the provided script on UNIX platforms:
     ./run.sh
 \end{verbatim}
 It basically compiles all the sources needed by the main class and then run it.
-Please ensure that the \texttt{java} executable is available in your \texttt{PATH}.
+Please ensure that you are using Java 7 or above and that the \texttt{java} and \texttt{javac} executables are available in your \texttt{PATH}.
 You can also configure the verbosity level of the output inside the script, which allows to trace the various \ac{CAS} operations.
 The default level is \emph{FINE}, which shows the methods invocations and return values of the interface methods.
+Please refer to \texttt{README.txt} for further information.
 
-We report a simple execution where Thread1 inserts
+The provided Main class uses five threads and executes many operations, but for the sake of brevity we report this simple history, where three threads tries to do the following operations:
+
+\begin{table}[H]
+\centering
+
+\label{my-label}
+\begin{tabular}{c|c|c}
+{\bf Thread\#10} & {\bf Thread\#11} & {\bf Thread\#12} \\
+\hline
+\texttt{bst.insert(20)}   & \texttt{bst.insert(15)}   & \texttt{bst.insert(30)}   \\
+\texttt{bst.insert(30)}   & \texttt{bst.delete(20)}   & \texttt{bst.find(20)}     \\
+                 & \texttt{bst.find(15)}     & \texttt{bst.insert(15)}   \\
+                 &                  & \texttt{bst.find(20)}
+\end{tabular}
+\caption{My caption}
+\end{table}
+
+One possible execution is the following:
 \begin{verbatim}
-[...] Thread#13:    insert: ENTRY 10
-[...]
-[...] Thread#13:    insert: RETURN true
-[...] Thread#13:    insert: ENTRY 20
-[...]
-[...] Thread#13:    insert: RETURN true
-[...] Thread#13:    insert: ENTRY 30
-[...]
-[...] Thread#13:    insert: RETURN true
-[...] Thread#14:      delete: ENTRY 20
-[...]
-[...] Thread#14:      delete: dflag[key=20] success
-[...]
-[...] Thread#15:         insert: ENTRY 15
-[...]
-[...] Thread#15:         helpDelete: mark[key=30] success
-[...]
-[...] Thread#15:         helpMarked: dchild[key=20]
-[...] Thread#15:         helpMarked: dunflag[key=20]
-[...] Thread#15:         helpMarked: RETURN
-[...] Thread#15:         helpDelete: RETURN true
-[...] Thread#15:         help: RETURN
-[...]
-[...] Thread#15:         insert: iflag[key=20] success
-[...]
-[...] Thread#15:         helpInsert: ichild[key=20]
-[...] Thread#15:         helpInsert: iunflag[key=20]
-[...] Thread#15:         helpInsert: RETURN
-[...] Thread#15:         insert: RETURN true
-[...] Thread#14:      helpDelete: mark[key=30] done by another thread
-[...]
-[...] Thread#14:      helpMarked: dchild[key=20]
-[...] Thread#14:      helpMarked: dunflag[key=20]
-[...] Thread#14:      helpMarked: RETURN
-[...] Thread#14:      helpDelete: RETURN true
-[...] Thread#14:      delete: RETURN true
-[...]
+[02:03:55.648] Thread#10:    insert: ENTRY 20
+[02:03:55.648] Thread#12:        insert: ENTRY 30
+[02:03:55.648] Thread#11:      insert: ENTRY 15
+[02:03:55.652] Thread#10:    insert: RETURN true
+[02:03:55.653] Thread#10:    insert: ENTRY 30
+[02:03:55.653] Thread#10:    insert: RETURN true
+[02:03:55.654] Thread#11:      insert: RETURN true
+[02:03:55.654] Thread#11:      delete: ENTRY 20
+[02:03:55.655] Thread#12:        insert: RETURN false
+[02:03:55.655] Thread#12:        find: ENTRY 20
+[02:03:55.655] Thread#12:        find: RETURN true
+[02:03:55.655] Thread#12:        insert: ENTRY 15
+[02:03:55.656] Thread#12:        insert: RETURN false
+[02:03:55.656] Thread#11:      delete: RETURN true
+[02:03:55.656] Thread#12:        find: ENTRY 20
+[02:03:55.656] Thread#11:      find: ENTRY 15
+[02:03:55.657] Thread#12:        find: RETURN false
+[02:03:55.657] Thread#11:      find: RETURN true
 \end{verbatim}
 
-
+As you can verify, this is a valid execution: Thread 10 and 11 successfully complete all the operations. Thread 12 fails to insert 30 because it already exists, then it finds 20 because Thread 10 inserted it before (and Thread 11 didn't delete it yet), then it fails again trying to insert 15 and then it looks for 20 and can't find it since Thread 11 managed to delete it.
 
 
 \section{Architecture} % (fold)
 \label{sec:architecture}
+% TODO: tosay
+% javadoc
+% cas semantics
+% atomic reference
+% generics
+% dot format
+% ocaml format
+% logging facility (thread safe?)
 
 \paragraph{CAS semantics}
 In order to achieve the \emph{non-blocking} feature we use the Java variant of the \ac{CAS} operation, which is the compare-and-set.
