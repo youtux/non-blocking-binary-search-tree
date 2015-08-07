@@ -1,3 +1,4 @@
+Make sure to use Java 7 and to have "javac" and "java" in your PATH.
 In order to compile/run the application, you can just run:
     ./run.sh
 
