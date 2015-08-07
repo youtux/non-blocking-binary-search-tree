@@ -15,3 +15,7 @@ The "-DlogLevel=FINE" argument defines the logLevel property FINE, which is the 
 - FINER: Show entering and exiting parameters for all
          the methods
 - FINEST: Trace also the various CAS operations
+
+You will also find a dot representation of the output graph in the "graph.dot" file in your CWD.
+Assuming you have Graphviz installed and the "dot" command available in your PATH, you can convert it to png using the following command:
+    dot graph.dot -Tpng -o graph.png
