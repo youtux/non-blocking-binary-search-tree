@@ -63,6 +63,7 @@ It basically compiles all the sources needed by the main class and then run it.
 Please ensure that you are using Java 7 or above and that the \texttt{java} and \texttt{javac} executables are available in your \texttt{PATH}.
 You can also configure the verbosity level of the output inside the script, which allows to trace the various \ac{CAS} operations.
 The default level is \emph{FINE}, which shows the methods invocations and return values of the interface methods.
+The main class will also save the dot representation of the resulting graph inside the \texttt{graph.dot} file.
 Please refer to \texttt{README.txt} for further information.
 
 The provided Main class uses five threads and executes many operations, but for the sake of brevity we report this simple history, where three threads tries to do the following operations:
@@ -117,11 +118,22 @@ As you can verify, this is a valid execution: Thread 10 and 11 successfully comp
 % dot format
 % ocaml format
 % logging facility (thread safe?)
+The provided implementation is basically a rewriting of the work done by Ellen et al in Java. Some trickery is needed when dealing with the \ac{CAS} objects.
 
-\paragraph{CAS semantics}
+\paragraph{CAS objects}
 In order to achieve the \emph{non-blocking} feature we use the Java variant of the \ac{CAS} operation, which is the compare-and-set.
 The key difference is that compare-and-swap returns the value the object had before the operation, while compare-and-set returns \emph{true} if and only if the operation has been completed successfully.
-For this reason, the Java implementation is not a 1:1 rewriting of the code given by the reference paper, and some trickery is needed when dealing with the compare-and-set results.
+
+In the paper, the result of a compare-and-swap operation is checked by comparing the value returned with the one we are expecting. If they are equals, this means that the operation was successful, and viceversa.
+With the compare-and-set semantics, it is sufficient to check the return value.
+
+The main difficulty comes when we need to check the reason why an operation was unsuccessful.
+This happens in the \texttt{helpDelete()} method: it tries to \emph{MARK} the parent node of the given operation, but the compare-and-set might fail because some other thread already marked it.
+To solve this, the result of the \ac{CAS} operation is checked. If it failed, the current state of the parent is obtained and checked if it has been \emph{MARK}ed by another node.
+This works fine because, intuitively, once a node has been marked, it cannot change its state (from this state, the \texttt{delete()} operation can only succeed) and will eventually be physically deleted.
+
+% TODO
+Another problem arises when trying to implement the CAS word
 
 \section{Tests} % (fold)
 \label{sec:tests}
