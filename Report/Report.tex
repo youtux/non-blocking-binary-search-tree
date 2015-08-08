@@ -117,6 +117,8 @@ One possible execution is the following:
 
 As you can verify, this is a valid execution: Thread 10 and 11 successfully complete all the operations. Thread 12 fails to insert 30 because it already exists, then it finds 20 because Thread 10 inserted it before (and Thread 11 didn't delete it yet), then it fails again trying to insert 15 and then it looks for 20 and can't find it since Thread 11 managed to delete it.
 
+\section{Intuition}
+% TODO
 
 \section{Architecture} % (fold)
 \label{sec:architecture}
