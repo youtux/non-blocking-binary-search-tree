@@ -50,6 +50,16 @@ The class that implements it is \texttt{Non\-Blocking\-Binary\-Search\-Tree\-<T>
 All the implemented methods are total and lock-free, but the \texttt{find} method is also wait-free.
 This is due to the fact that \texttt{insert} and \texttt{delete} operations might need to adjust the tree in order to complete, while \texttt{find} can just look for the item without \emph{helping} other concurrent operations.
 
+The project also provides the following features:
+\begin{compactitem}
+    \item[\textbf{Java ``generics''}] When useful, classes are declared using generic types.
+    \item[\textbf{Javadoc}] Classes documentation.
+    \item[\textbf{OCaml-like output syntax}] Tree representation in OCaml-like style.
+    \item[\textbf{Dot output syntax}] Tree representation as a dot file.
+    \item[\textbf{Logging facility}] Fine-grained logging facility: you can choose to print just method invocations/\-returns, or get deeper and show also the result of CAS operations.
+\end{compactitem}
+
+
 
 % section introduction (end)
 
