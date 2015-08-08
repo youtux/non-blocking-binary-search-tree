@@ -119,35 +119,56 @@ One possible execution is the following:
 
 As you can verify, this is a valid execution: Thread 10 and 11 successfully complete all the operations. Thread 12 fails to insert 30 because it already exists, then it finds 20 because Thread 10 inserted it before (and Thread 11 didn't delete it yet), then it fails again trying to insert 15 and then it looks for 20 and can't find it since Thread 11 managed to delete it.
 
-\section{Intuition}
-% TODO
+\section{Implementation}
+The provided implementation is basically a rewriting of the work done by Ellen et al in Java.
+Some trickery is needed when dealing with the \ac{CAS} objects.
 
-\section{Architecture} % (fold)
-\label{sec:architecture}
+The types described in the paper (\emph{Update}, \emph{Internal}, \emph{Info}, etc.) are implemented using classes, according to the standard OOP paradigms (subclassing, abstract classes, etc.).
+All the fields that are not mutable are declared using the \emph{final} modifier, to ensure this property (e.g., \texttt{key} field of nodes).
+
+The class that implements the algorithms described in the paper is \texttt{Non\-Blocking\-Binary\-Search\-Tree<T>} and its state is just a reference to the root node.
+The following is a brief overview of the interesting methods:
+\begin{itemize}
+    \item \texttt{find(T item)}: it descends the tree looking for the element with key given by the hash code of the item.
+    It returns true if and only if it has been found.
+    This function is wait-free, since it does not help ongoing operations.
+    \item \texttt{insert(T item)}: it looks for the parent of the new node to insert, after checking that it is not already present.
+    Then it creates an \texttt{UpdateInfo} object with all the information required to complete this operation.
+    It tries to \emph{iflag} the parent, and if the operation was successful it physically adds the new node (\emph{ichild}) and marks the parent as clean (\emph{iunchild}).
+    If it was not possible to \emph{iflag} the parent, then it starts the procedure again.
+    This function is lock-free, because it might encounter some unfinished operations that prevents the insertion, and in that case it would help them to complete.
+    \item \texttt{remove(T item)}: it looks for the parent and the grandparent of the node to remove, if any.
+    Just like the previous method, it creates a \texttt{DeleteInfo} object with enough information for any thread to complete the deletion.
+    Then it tries to \emph{dflag} the grandparent node: if it fails, it starts the procedure again, if it succeeds then it tries to \emph{mark} the parent node.
+    If it fails, it starts the procedure again, otherwise it completes the operation with the \emph{dchild} (physical node removal) and \emph{dunflag} (set grand parent state back to clean) steps.
+    Also this method is lock-free, because it might need to \emph{help} other operations.
+\end{itemize}
+To get a deeper view of the class, please refer to the \emph{javadoc}.
+
+\subsection{Difficulties} % (fold)
+\label{ssec:difficulties}
 % TODO: tosay
 % javadoc
-% cas semantics
-% atomic reference
-% generics
 % dot format
 % ocaml format
 % logging facility (thread safe?)
-The provided implementation is basically a rewriting of the work done by Ellen et al in Java. Some trickery is needed when dealing with the \ac{CAS} objects.
 
-\paragraph{CAS objects}
-In order to achieve the \emph{non-blocking} feature we use the Java variant of the \ac{CAS} operation, which is the compare-and-set.
+In order to achieve the \emph{non-blocking} requirements we use the Java variant of the \ac{CAS} operation, which is the compare-and-set.
 The key difference is that compare-and-swap returns the value the object had before the operation, while compare-and-set returns \emph{true} if and only if the operation has been completed successfully.
 
-In the paper, the result of a compare-and-swap operation is checked by comparing the value returned with the one we are expecting. If they are equals, this means that the operation was successful, and viceversa.
+In the paper, the result of a compare-and-swap operation is checked by comparing the value returned with the one we are expecting. If they are equal, this means that the operation was successful, and viceversa.
 With the compare-and-set semantics, it is sufficient to check the return value.
 
 The main difficulty comes when we need to check the reason why an operation was unsuccessful.
 This happens in the \texttt{helpDelete()} method: it tries to \emph{MARK} the parent node of the given operation, but the compare-and-set might fail because some other thread already marked it.
+In this case we cannot blindly return false, because it would mean that the operation cannot be completed and needs to backtrack.
 To solve this, the result of the \ac{CAS} operation is checked. If it failed, the current state of the parent is obtained and checked if it has been \emph{MARK}ed by another node.
-This works fine because, intuitively, once a node has been marked, it cannot change its state (from this state, the \texttt{delete()} operation can only succeed) and will eventually be physically deleted.
+This works fine because, intuitively, once a node has been marked it cannot change its state (from this point, the \texttt{delete()} operation can only succeed) and will eventually be physically deleted.
 
-% TODO
-Another problem arises when trying to implement the CAS word
+Another problem comes with the implementation of the \texttt{Node.update} field, which is a \ac{CAS}-word that points to an \texttt{Info} record. This same word is also used to store a \texttt{State} record. Since in Java we do not have access to field pointers, we cannot steal the first two bits of the reference. To quote David Wheeler, ``all problems in computer science can be solved by another level of indirection [...]'': indeed the provided solution just wraps the \texttt{Info} and \texttt{State} records into an \texttt{Update} object. Finally, the \texttt{Node.update} field is an \texttt{Atomic\-Reference} that points to an \texttt{Update} object.
+
+Alternatively, one could have used the \texttt{AtomicStampedReference}, but this class does exactly what is described above\footnote{See the OpenJDK implementation at \url{https://github.com/openjdk-mirror/jdk7u-jdk/blob/jdk7u6-b08/src/share/classes/java/util/concurrent/atomic/AtomicStampedReference.java}}. I prefer to use my version because I think it makes the code more clear and readable.
+
 
 \section{Tests} % (fold)
 \label{sec:tests}
