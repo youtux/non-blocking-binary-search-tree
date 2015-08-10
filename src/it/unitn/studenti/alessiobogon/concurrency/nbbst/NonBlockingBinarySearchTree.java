@@ -386,9 +386,9 @@ public class NonBlockingBinarySearchTree<T> implements Set<T> {
                 result += dotifyAux(left);
                 sameRank += dotifyNodeName(left) + " -> ";
             }
-            result += "\t" + dotifyNodeName(node) + " -> Space_" + node.key + " [style=invis];\n";
+            result += "\t" + dotifyNodeName(node) + " -> \"Space_" + node.key + "\" [style=invis];\n";
 
-            sameRank += "Space_" + node.key;
+            sameRank += "\"Space_" + node.key + "\"";
             if (right != null) {
                 result += "\t" + dotifyNodeName(node) + " -> " + dotifyNodeName(right) + ";\n";
                 result += dotifyAux(right);
@@ -409,8 +409,8 @@ public class NonBlockingBinarySearchTree<T> implements Set<T> {
      * @return the dot entry String
      */
     private static String dotifyNodeName(Node node){
-        if (node instanceof Leaf) return "Leaf_" + node.key;
-        if (node instanceof InternalNode) return "InternalNode_" + node.key;
+        if (node instanceof Leaf) return "\"Leaf_" + node.key + "\"";
+        if (node instanceof InternalNode) return "\"InternalNode_" + node.key + "\"";
         return "";
     }
 
@@ -421,10 +421,10 @@ public class NonBlockingBinarySearchTree<T> implements Set<T> {
      */
     private static String dotifyNodeMetadata(Node node) {
         if (node instanceof Leaf) {
-            return dotifyNodeName(node) + " [shape=box, label=" + ((Leaf) node).item + "]";
+            return dotifyNodeName(node) + " [shape=box, label=\"" + ((Leaf) node).item + "\"]";
         }
         if (node instanceof InternalNode) {
-            return dotifyNodeName(node) + " [label=" + node.key + "]";
+            return dotifyNodeName(node) + " [label=\"" + node.key + "\"]";
         }
         return "";
     }
@@ -435,7 +435,7 @@ public class NonBlockingBinarySearchTree<T> implements Set<T> {
      * @param parent the parent
      * @return the dot entry String
      */
-        return "Space_" + parent.key + " [label=\"\",width=1,style=invis]";
     private static String dotifySpaceMetadata(InternalNode parent) {
+        return "\"Space_" + parent.key + "\" [label=\"\",width=1,style=invis]";
     }
 }
