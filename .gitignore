@@ -101,3 +101,5 @@ hs_err_pid*
 *.xdy
 *.tdo
 
+graph.dot
+graph.png
