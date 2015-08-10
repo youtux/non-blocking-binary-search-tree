@@ -371,7 +371,7 @@ public class NonBlockingBinarySearchTree<T> implements Set<T> {
      * @param n the starting node
      * @return the dot string for the subtree induced by n
      */
-    private String dotifyAux(Node n) {
+    private static String dotifyAux(Node n) {
         String result = "";
         if (n instanceof Leaf){
             Leaf node = (Leaf) n;
@@ -435,7 +435,7 @@ public class NonBlockingBinarySearchTree<T> implements Set<T> {
      * @param parent the parent
      * @return the dot entry String
      */
-    private String dotifySpaceMetadata(InternalNode parent) {
         return "Space_" + parent.key + " [label=\"\",width=1,style=invis]";
+    private static String dotifySpaceMetadata(InternalNode parent) {
     }
 }
