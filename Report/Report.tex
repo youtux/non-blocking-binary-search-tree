@@ -180,6 +180,8 @@ Another problem comes with the implementation of the \texttt{Node.update} field,
 
 Alternatively, one could have used the \texttt{AtomicStampedReference}, but this class does exactly what is described above\footnote{See the OpenJDK implementation at \url{https://github.com/openjdk-mirror/jdk7u-jdk/blob/jdk7u6-b08/src/share/classes/java/util/concurrent/atomic/AtomicStampedReference.java}}. However this would make the code less clear, so the former solution is used.
 
+Worth of note is the fact that the paper initializes the tree with two special values, $\infty_2$ and $\infty_1$. To manage this issue this implementation replaces them with \texttt{Integer.MAX\_VALUE} and \texttt{Integer.MAX\_VALUE - 1} respectively. The only limitation is that it is not possible to insert nodes with such values, but it is an acceptable compromise in my opinion. Alternatively, one could write an \texttt{ExtendedInteger} class that implements the \texttt{Comparable} interface and that deals with these special values. This would result in a more messy code because comparisons like \texttt{this.key < other.key} would become \texttt{this.key.compareTo(other.key) == -1}, since Java does not allow to define custom operator overloads.
+
 
 \begin{thebibliography}{9}
     \bibitem{ellen10} Ellen, F., Fatourou, P., Ruppert, E., and van Breugel, F. \emph{Non-blocking Binary Search Trees}. Proceedings of the 29th Annual ACM Symposium on Principles of Distributed Computing (PODC), 131–140, 2010.
