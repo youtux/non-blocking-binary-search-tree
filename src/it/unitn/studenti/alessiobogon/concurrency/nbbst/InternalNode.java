@@ -5,6 +5,10 @@ import java.util.concurrent.atomic.AtomicReference;
 /**
  * Created by Alessio Bogon on 11/06/15.
  */
+
+/**
+ * This class represents an internal node. It keeps <tt>AtomicReference</tt>s to the update field and the children.
+ */
 class InternalNode extends Node{
     final AtomicReference<Update> update;
     final AtomicReference<Node> left, right;

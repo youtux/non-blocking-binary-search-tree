@@ -8,11 +8,22 @@ import it.unitn.studenti.alessiobogon.concurrency.Set;
 /**
  * Created by Alessio Bogon on 11/06/15.
  */
+
+/**
+ * A non-blocking unbalanced Binary Search Tree. This tree performs compare-and-set operations to avoid locking.
+ * This class provides a logger, <tt>it.unitn.studenti.alessiobogon.concurrency.nbbst.NonBlockingBinarySearchTree</tt>,
+ * with 3 levels of verbosity: FINE, FINER and FINEST.
+ *
+ * @param <T> the type of elements maintained by this tree
+ */
 public class NonBlockingBinarySearchTree<T> implements Set<T> {
     private static final Logger logger = Logger.getLogger(NonBlockingBinarySearchTree.class.getName());
 
     private final Node root;
 
+    /**
+     * Constructs a new, empty binary search tree set, sorted according to the hashCode of its elements.
+     */
     public NonBlockingBinarySearchTree(){
         int inf1 = Integer.MAX_VALUE - 1;
         int inf2 = Integer.MAX_VALUE;
@@ -25,6 +36,12 @@ public class NonBlockingBinarySearchTree<T> implements Set<T> {
         );
     }
 
+    /**
+     * Returns <tt>true</tt> if this set contains the specified element.
+     *
+     * @param item element whose presence is to be tested
+     * @return <tt>true</tt> if this set contains the specified element
+     */
     @Override
     public boolean find(T item) {
         logger.log(Level.FINE, "ENTRY {0}", item);
@@ -36,6 +53,12 @@ public class NonBlockingBinarySearchTree<T> implements Set<T> {
         return result.leaf.key == key;
     }
 
+    /**
+     * Adds the specified element to this set, if it is not already present.
+     *
+     * @param item element to be inserted
+     * @return <tt>true</tt> if the set did not contain the element
+     */
     @Override
     public boolean insert(T item){
         logger.log(Level.FINE, "ENTRY {0}", item);
@@ -91,6 +114,12 @@ public class NonBlockingBinarySearchTree<T> implements Set<T> {
         }
     }
 
+    /**
+     * Removes the specified element to this set, if it exists.
+     *
+     * @param item element to be deleted
+     * @return <tt>true</tt> if the set did contain the element
+     */
     @Override
     public boolean delete(T item) {
         logger.log(Level.FINE, "ENTRY {0}", item);
@@ -138,6 +167,11 @@ public class NonBlockingBinarySearchTree<T> implements Set<T> {
         }
     }
 
+    /**
+     * Dispatch the update operation to the right method (e.g. IFLAG to helpInsert,
+     * MARK to helpMarked, etc.)
+     * @param u the operation to help
+     */
     private void help(Update u) {
         logger.log(Level.FINER, "ENTRY {0}", u);
         switch (u.state) {
@@ -154,6 +188,11 @@ public class NonBlockingBinarySearchTree<T> implements Set<T> {
         logger.log(Level.FINER, "RETURN");
     }
 
+    /**
+     * Help the item insertion of the given operation.
+     * This method will perform a parent <tt>ichild</tt> and the it will <tt>iunflag</tt> the parent.
+     * @param operation The <tt>insert</tt> operation to help.
+     */
     private void helpInsert(InsertInfo operation) {
         logger.log(Level.FINER, "ENTRY {0}", operation);
 
@@ -168,11 +207,16 @@ public class NonBlockingBinarySearchTree<T> implements Set<T> {
         logger.log(Level.FINER, "RETURN");
     }
 
+    /**
+     * Help the physical item removal of the given operation.
+     * This method will set the grandparent.parent to the right child of the parent (<tt>dchild</tt>).
+     * After that, it will <tt>dunflag</tt> the grandparent.
+     * @param operation The <tt>mark</tt> operation to help
+     */
     private void helpMarked(DeleteInfo operation) {
         logger.log(Level.FINER, "ENTRY {0}", operation);
         // Set other to point to the sibling of the node to which operation.leaf points
         Node other;
-        // TODO: Check if these gets are safe. They should be.
         if (operation.parent.right.get() == operation.leaf)
             other = operation.parent.left.get();
         else
@@ -189,6 +233,16 @@ public class NonBlockingBinarySearchTree<T> implements Set<T> {
         logger.log(Level.FINER, "RETURN");
     }
 
+    /**
+     * Help the logical item removal of the given operation.
+     * This method will try to <tt>MARK</tt> the parent. If the compare-and-set succeeds, or if some other thread helped
+     * this operation, the precedure can continue and this method will return <tt>true</tt>, meaning that the removal
+     * operation has been completed.
+     * Otherwise it will perform a backtrack compare-and-set, cleaning the state of the grandparent (ensuring that its
+     * state did not change), and return <tt>false</tt>, indicating that the removal procedure should be restarted.
+     * @param operation The <tt>delete</tt> operation to help.
+     * @return <tt>true</tt> if the element has been removed.
+     */
     private boolean helpDelete(DeleteInfo operation) {
         logger.log(Level.FINER, "ENTRY {0}", operation);
 
@@ -228,6 +282,14 @@ public class NonBlockingBinarySearchTree<T> implements Set<T> {
         }
     }
 
+    /**
+     * Traverse the tree looking for the element with the given key.
+     * Returns a <tt>SearchResult</tt> which is a snapshot containing information about the node, its parent,
+     * its grandparent and their update fields. This result may contain a leaf with key greater than the given one, in
+     * case the given one is not present in the tree.
+     * @param key The key to search in the set
+     * @return a <tt>SearchResult</tt> containing the snapshot of the fields.
+     */
     private SearchResult search(int key) {
         logger.log(Level.FINER, "ENTRY {0}", key);
 
@@ -255,12 +317,29 @@ public class NonBlockingBinarySearchTree<T> implements Set<T> {
         return result;
     }
 
-    private boolean compareAndSetChild(InternalNode parent, Node oldChild, Node newChild) {
+    /**
+     * Performs a compare-and-set operation on the correct child of <tt>parent</tt>.
+     * @param parent The parent node
+     * @param oldChild The expected old child
+     * @param newChild The new child to set
+     * @return
+     */
+    private static boolean compareAndSetChild(InternalNode parent, Node oldChild, Node newChild) {
         AtomicReference<Node> childUpdater = newChild.key < parent.key ? parent.left : parent.right;
         return childUpdater.compareAndSet(oldChild, newChild);
     }
 
-    private boolean compareAndSetUpdate(AtomicReference<Update> reference, Update expectedUpdate, Update newUpdate){
+    /**
+     * Convenience method that performs a compare-and-set operation using the <tt>.equals()</tt> comparison.
+     * This method will obtain a snapshot <tt>tmp</tt> of the object wrapped by <tt>reference</tt>, compare it against
+     * the <tt>expectedUpdate</tt> using <tt>expectedUpdate.equals(tmp)</tt>, and if it returns true then it will
+     * perform the compare-and-set operation using the <tt>tmp</tt> field as expected reference.
+     * @param reference the AtomicReference on which to call the <tt>compareAndSet</tt> method
+     * @param expectedUpdate the expected value of the reference (compared using <tt>.equals()</tt>)
+     * @param newUpdate the new value to set
+     * @return <tt>true</tt> if the operation succeeded according to the usual compare-and-set semantics.
+     */
+    private static boolean compareAndSetUpdate(AtomicReference<Update> reference, Update expectedUpdate, Update newUpdate){
         Update tmp = reference.get();
         if (expectedUpdate.equals(tmp)){
             return reference.compareAndSet(tmp, newUpdate);
@@ -273,6 +352,12 @@ public class NonBlockingBinarySearchTree<T> implements Set<T> {
         return root.toString();
     }
 
+    /**
+     * Returns a <tt>String</tt> containing the "dot" format representation of the tree.
+     * <strong>Note that this implementation is not synchronized.</strong> You need to ensure that the tree is not
+     * being modified while calling this method.
+     * @return the "dot" format representation of the tree.
+     */
     public String dotify() {
         String result = "strict digraph {\n";
         result += dotifyAux(root);
@@ -281,6 +366,11 @@ public class NonBlockingBinarySearchTree<T> implements Set<T> {
         return result;
     }
 
+    /**
+     * Auxiliary function that traverse the tree recursively and generates the "dot" entries.
+     * @param n the starting node
+     * @return the dot string for the subtree induced by n
+     */
     private String dotifyAux(Node n) {
         String result = "";
         if (n instanceof Leaf){
@@ -313,13 +403,23 @@ public class NonBlockingBinarySearchTree<T> implements Set<T> {
         return result;
     }
 
-    private String dotifyNodeName(Node node){
+    /**
+     * Returns the dot entry for the given node
+     * @param node the node
+     * @return the dot entry String
+     */
+    private static String dotifyNodeName(Node node){
         if (node instanceof Leaf) return "Leaf_" + node.key;
         if (node instanceof InternalNode) return "InternalNode_" + node.key;
         return "";
     }
 
-    private String dotifyNodeMetadata(Node node) {
+    /**
+     * Returns the dot entry metadata for the given node
+     * @param node the node
+     * @return the dot entry metadata String
+     */
+    private static String dotifyNodeMetadata(Node node) {
         if (node instanceof Leaf) {
             return dotifyNodeName(node) + " [shape=box, label=" + ((Leaf) node).item + "]";
         }
@@ -329,6 +429,12 @@ public class NonBlockingBinarySearchTree<T> implements Set<T> {
         return "";
     }
 
+    /**
+     * Returns the dot entry for an empty space to be inserted between the children
+     * of the parent
+     * @param parent the parent
+     * @return the dot entry String
+     */
     private String dotifySpaceMetadata(InternalNode parent) {
         return "Space_" + parent.key + " [label=\"\",width=1,style=invis]";
     }

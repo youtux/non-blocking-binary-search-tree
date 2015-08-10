@@ -9,6 +9,10 @@ import it.unitn.studenti.alessiobogon.concurrency.nbbst.NonBlockingBinarySearchT
 /**
  * Created by Alessio Bogon on 11/06/15.
  */
+
+/**
+ * Main class to test the behaviour of the Non-blocking Binary Search Tree.
+ */
 public class Main {
     public static final String GRAPH_OUTPUT_PATH = "graph.dot";
     public static final Level defaultLogLevel = Level.FINE;
@@ -35,7 +39,16 @@ public class Main {
         logger.addHandler(logHandler);
     }
 
-    public static void main(String[] args) throws NoSuchMethodException, InterruptedException {
+    /**
+     * The main procedure will instantiate a tree and will start some threads that will perform concurrent operations.
+     * The results are printed on the console using a custom logger formatter <tt>ConcurrentFormatter</tt>.
+     * When threads finish, a representation of the tree in "dot" format is saved inside the <tt>GRAPH_OUTPUT_PATH</tt>
+     * file.
+     * The log level can be changed by passing it through a VM option (<tt>-DlogLevel=FINEST</tt>).
+     * @param args
+     * @throws InterruptedException
+     */
+    public static void main(String[] args) throws InterruptedException {
         setupConsoleHandler();
 
         Logger bstLogger = Logger.getLogger(NonBlockingBinarySearchTree.class.getName());

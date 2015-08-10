@@ -3,6 +3,10 @@ package it.unitn.studenti.alessiobogon.concurrency.nbbst;
 /**
  * Created by Alessio Bogon on 11/06/15.
  */
+
+/**
+ * This class wraps the needed fields to execute an <tt>insert</tt> operation.
+ */
 class InsertInfo extends Info {
     final InternalNode parent;
     final Leaf leaf;
