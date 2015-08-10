@@ -193,7 +193,7 @@ This works fine because, intuitively, once a node has been marked it cannot chan
 Another problem comes with the implementation of the \texttt{Node.update} field, which is a \emph{word} that points to an \texttt{Info} record.
 This same word is also used to store a \texttt{State} record, by stealing the first two bits.
 Since in Java we do not have access to raw pointers, we cannot steal the first two bits of the reference.
-To quote David Wheeler, ``all problems in computer science can be solved by another level of indirection [...]'': indeed the provided solution just wraps the \texttt{Info} and \texttt{State} records into an \texttt{Update} object.
+``All problems in computer science can be solved by another level of indirection [...]'' (David Wheeler): indeed the provided solution just wraps the \texttt{Info} and \texttt{State} records into an \texttt{Update} object.
 To conclude, the \texttt{Node.update} field is an \texttt{Atomic\-Reference} that points to an \texttt{Update} object.
 
 Alternatively, one could have used the \texttt{AtomicStampedReference}, but this class does exactly what is described above\footnote{See the OpenJDK implementation at \url{https://github.com/openjdk-mirror/jdk7u-jdk/blob/jdk7u6-b08/src/share/classes/java/util/concurrent/atomic/AtomicStampedReference.java}}.
